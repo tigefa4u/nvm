@@ -85,7 +85,7 @@ nvm_has_colors() {
 }
 
 nvm_curl_libz_support() {
-  curl -V 2>/dev/null | nvm_grep "^Features:" | nvm_grep -q "libz"
+  curl -V 2>/dev/null | command awk '/^Features:.*libz/ { found=1; exit } END { exit (found ? 0 : 1) }'
 }
 
 nvm_curl_use_compression() {
