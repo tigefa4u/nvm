@@ -530,9 +530,13 @@ $(nvm_wrap_with_color_code 'y' "${warn_text}")"
 nvm_process_nvmrc() {
   local NVMRC_PATH
   NVMRC_PATH="$1"
-  local lines
 
-  lines=$(command sed 's/#.*//' "$NVMRC_PATH" | command sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | nvm_grep -v '^$')
+  local lines
+  lines=$(command awk '{
+    sub(/#.*/, "")
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "")
+    if (length($0) > 0) print
+  }' "$NVMRC_PATH")
 
   if [ -z "$lines" ]; then
     nvm_nvmrc_invalid_msg "${lines}"
@@ -1991,7 +1995,28 @@ nvm_print_implicit_alias() {
       NVM_IOJS_VERSION="$(${NVM_COMMAND})" &&:
       EXIT_CODE="$?"
       if [ "_${EXIT_CODE}" = "_0" ]; then
-        NVM_IOJS_VERSION="$(nvm_echo "${NVM_IOJS_VERSION}" | command sed "s/^${NVM_IMPLICIT}-//" | nvm_grep -e '^v' | command cut -c2- | command cut -d . -f 1,2 | uniq | command tail -1)"
+        NVM_IOJS_VERSION="$(nvm_echo "${NVM_IOJS_VERSION}" | command awk -v prefix="^${NVM_IMPLICIT}-" '
+          BEGIN {
+            last = ""
+            prev = ""
+          }
+          {
+            sub(prefix, "")
+            # skip lines that do not start with "v"
+            if ($0 !~ /^v/) next
+            # remove leading "v"
+            sub(/^v/, "")
+            # keep only major.minor
+            split($0, parts, "\\.")
+            short = parts[1] "." parts[2]
+            # replicate "uniq" by only updating if changed
+            if (short != prev) {
+              last = short
+              prev = short
+            }
+          }
+          END { print last }
+        ')"
       fi
 
       if [ "_$NVM_IOJS_VERSION" = "_N/A" ]; then
