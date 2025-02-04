@@ -1533,20 +1533,33 @@ nvm_ls() {
     fi
     if [ -n "${NVM_DIRS_TO_SEARCH1}${NVM_DIRS_TO_SEARCH2}${NVM_DIRS_TO_SEARCH3}" ]; then
       VERSIONS="$(command find "${NVM_DIRS_TO_SEARCH1}"/* "${NVM_DIRS_TO_SEARCH2}"/* "${NVM_DIRS_TO_SEARCH3}"/* -name . -o -type d -prune -o -path "${PATTERN}*" \
-        | command sed -e "
-            s#${NVM_VERSION_DIR_IOJS}/#versions/${NVM_IOJS_PREFIX}/#;
-            s#^${NVM_DIR}/##;
-            \\#^[^v]# d;
-            \\#^versions\$# d;
-            s#^versions/##;
-            s#^v#${NVM_NODE_PREFIX}/v#;
-            \\#${SEARCH_PATTERN}# !d;
-          " \
-          -e 's#^\([^/]\{1,\}\)/\(.*\)$#\2.\1#;' \
-        | command sort -t. -u -k 1.2,1n -k 2,2n -k 3,3n \
-        | command sed -e 's#\(.*\)\.\([^\.]\{1,\}\)$#\2-\1#;' \
-                      -e "s#^${NVM_NODE_PREFIX}-##;" \
-      )"
+        | command awk \
+            -v dir_iojs="${NVM_VERSION_DIR_IOJS}" \
+            -v iojs_prefix="versions/${NVM_IOJS_PREFIX}/" \
+            -v dir="${NVM_DIR}" \
+            -v search="${SEARCH_PATTERN}" \
+            -v node_prefix="${NVM_NODE_PREFIX}" '
+            {
+              sub(dir_iojs"/", iojs_prefix)
+              sub("^" dir "/", "")
+              if ($0 ~ /^[^v]/) next
+              if ($0 == "versions") next
+              sub(/^versions\//, "")
+              sub(/^v/, node_prefix"/v")
+              if ($0 !~ search) next
+              sub(/^([^/]+)\/(.*)$/, "\\2.\\1")
+              print
+            }
+          ' \
+          | command sort -t. -u -k 1.2,1n -k 2,2n -k 3,3n \
+          | command awk -v node_prefix="${NVM_NODE_PREFIX}" '
+              {
+                sub(/^(.*)\.([^.]*)$/, "\\2-\\1")
+                sub("^" node_prefix"-", "")
+                print
+              }
+            '
+          )"
     fi
   fi
 
