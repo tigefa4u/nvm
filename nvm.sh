@@ -119,6 +119,7 @@ nvm_download() {
   if nvm_has "curl"; then
     local CURL_COMPRESSED_FLAG=""
     local CURL_HEADER_FLAG=""
+    local sanitized_header
 
     if [ -n "${NVM_AUTH_HEADER:-}" ]; then
       sanitized_header=$(nvm_sanitize_auth_header "${NVM_AUTH_HEADER}")
